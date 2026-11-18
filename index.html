@@ -5,20 +5,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>STREAK WARS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#090d18;color:#f5f7ff;font-family:Arial,sans-serif;padding:22px}
+body{margin:0;padding:20px;background:#090d18;color:#f5f7ff;font-family:Arial,sans-serif}
 main{max-width:520px;margin:auto}
-h1{text-align:center;letter-spacing:3px;color:#a78bfa}
+h1{text-align:center;color:#a78bfa;letter-spacing:3px}
 .sub{text-align:center;color:#9ba5bc}
 .card{background:#151d30;border:1px solid #293550;border-radius:16px;padding:18px;margin:16px 0}
-.stat{display:flex;justify-content:space-between;margin:12px 0}
-.number{font-size:32px;font-weight:bold;color:#a78bfa}
-button{border:0;border-radius:10px;padding:13px;font-weight:bold;cursor:pointer}
+input{width:100%;padding:13px;margin:7px 0;border-radius:9px;border:1px solid #46516b;background:#0d1424;color:white}
+button{padding:13px;border:0;border-radius:9px;font-weight:bold;background:#a78bfa;color:#151026;margin:5px 0;cursor:pointer}
+button:disabled{opacity:.4}
 .yes{background:#34d399;color:#071b16;flex:1}
 .no{background:#fb7185;color:#260910;flex:1}
-input{width:100%;padding:13px;border-radius:9px;border:1px solid #46516b;background:#0d1424;color:white;margin:8px 0}
-.small{color:#9ba5bc;font-size:13px}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.stat{margin:14px 0;display:flex;justify-content:space-between}
+.big{font-size:30px;color:#a78bfa;font-weight:bold}
+.small{font-size:13px;color:#9ba5bc}
+.hidden{display:none}
+.person{padding:10px 0;border-bottom:1px solid #293550}
+#message{color:#fbbf24;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -26,66 +32,222 @@ input{width:100%;padding:13px;border-radius:9px;border:1px solid #46516b;backgro
 <h1>⚔ STREAK WARS</h1>
 <p class="sub">DISCIPLINE IS YOUR WEAPON</p>
 
+<section id="auth" class="card">
+<h2>Join the battle</h2>
+<input id="email" type="email" placeholder="Email address">
+<input id="password" type="password" placeholder="Password (minimum 6 characters)">
+<div class="row">
+<button onclick="signup()">Create account</button>
+<button onclick="login()">Log in</button>
+</div>
+<p class="small">Use the same account on every device.</p>
+</section>
+
+<section id="app" class="hidden">
 <div class="card">
-<h2>Your warrior profile</h2>
-<input id="name" placeholder="Enter your warrior name">
-<button onclick="saveName()">Save name</button>
-<div class="stat"><span>Current streak</span><b class="number" id="streak">0</b></div>
+<div class="row"><h2>Warrior profile</h2><button onclick="logout()">Log out</button></div>
+<input id="username" placeholder="Your warrior name">
+<button onclick="saveProfile()">Save name</button>
+<div class="stat"><span>Current streak</span><b class="big" id="streak">0</b></div>
 <div class="stat"><span>Lifetime successful days</span><b id="total">0</b></div>
 <div class="stat"><span>Level</span><b id="level">Level 1</b></div>
 </div>
 
 <div class="card">
-<h2>Daily check-in</h2>
-<p id="status">Have you completed today without breaking your challenge?</p>
-<div style="display:flex;gap:12px">
-<button class="yes" onclick="check(true)">YES</button>
-<button class="no" onclick="check(false)">NO</button>
-</div>
-<p class="small" id="message">One check-in per day. Your answer cannot be changed.</p>
+<h2>Your group</h2>
+<p id="groupName">No group joined yet.</p>
+<p class="small" id="invite"></p>
+<input id="groupInput" placeholder="Group name (to create)">
+<button onclick="createGroup()">Create private group</button>
+<input id="inviteInput" placeholder="Enter friend's invite code">
+<button onclick="joinGroup()">Join with invite code</button>
 </div>
 
 <div class="card">
-<h2>Level system</h2>
-<p>Level is based on your current streak.</p>
-<p>Level 1: 0–6 days</p>
-<p>Level 2: 7–13 days</p>
-<p>Level 3: 14–29 days</p>
-<p>Level 4: 30–59 days</p>
-<p>Level 5: 60–99 days</p>
-<p>Level 6: 100–199 days</p>
-<p>Level 7: 200–364 days</p>
-<p>Level 8: 365+ days</p>
+<h2>Daily check-in</h2>
+<p id="checkStatus">Have you completed today without breaking your challenge?</p>
+<div class="row">
+<button class="yes" id="yesBtn" onclick="checkin(true)">YES</button>
+<button class="no" id="noBtn" onclick="checkin(false)">NO</button>
 </div>
+<p class="small">One answer per day. Answers cannot be changed.</p>
+</div>
+
+<div class="card">
+<h2>🏆 Current streak leaderboard</h2>
+<div id="streakBoard">Join a group to see rankings.</div>
+</div>
+<div class="card">
+<h2>⭐ Lifetime days leaderboard</h2>
+<div id="totalBoard">Join a group to see rankings.</div>
+</div>
+</section>
+<p id="message"></p>
 <p class="sub small">STREAK WARS • BUILD DISCIPLINE DAILY</p>
 </main>
 
 <script>
-const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
-let data=JSON.parse(localStorage.getItem('streakwars')||'{"streak":0,"total":0,"lastDate":"","name":""}');
-function save(){localStorage.setItem('streakwars',JSON.stringify(data));render()}
-function saveName(){data.name=document.getElementById('name').value.trim();save()}
-function level(s){return s>=365?8:s>=200?7:s>=100?6:s>=60?5:s>=30?4:s>=14?3:s>=7?2:1}
-function render(){
-document.getElementById('name').value=data.name||'';
-document.getElementById('streak').textContent=data.streak;
-document.getElementById('total').textContent=data.total;
-document.getElementById('level').textContent='Level '+level(data.streak);
-document.getElementById('status').textContent=data.lastDate===today()?'You have checked in today.':'Have you completed today without breaking your challenge?';
-document.querySelectorAll('.yes,.no').forEach(b=>b.disabled=data.lastDate===today());
-if(data.lastDate===today())document.getElementById('message').textContent='Check-in completed. Come back tomorrow.';
+const SUPABASE_URL="https://lhkantdvnbcdabgyssvq.supabase.co";
+const SUPABASE_KEY="sb_publishable_WjdRv1VsdVZM1ZKM3aT-7w_GLX6LtpX";
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let user=null, group=null, profile=null, checkins=[];
+const today=()=>new Intl.DateTimeFormat('en-CA',{
+ timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'
+}).format(new Date());
+
+function say(t){document.getElementById('message').textContent=t}
+function level(n){
+ return n>=365?8:n>=200?7:n>=100?6:n>=60?5:n>=30?4:n>=14?3:n>=7?2:1;
 }
-function check(success){
-if(data.lastDate===today())return;
-if(data.lastDate){
-let yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);
-let y=yesterday.toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
-if(data.lastDate!==y)data.streak=0;
+function currentStreak(rows){
+ const dates=new Set(rows.filter(x=>x.success).map(x=>x.checkin_date));
+ let d=new Date(today()+'T12:00:00Z');
+ if(!dates.has(today()))d.setUTCDate(d.getUTCDate()-1);
+ let count=0;
+ while(dates.has(d.toISOString().slice(0,10)) && count<10000){
+  count++;d.setUTCDate(d.getUTCDate()-1);
+ }
+ return count;
 }
-if(success){data.streak++;data.total++}else{data.streak=0}
-data.lastDate=today();save();
+async function signup(){
+ const email=document.getElementById('email').value.trim();
+ const password=document.getElementById('password').value;
+ if(password.length<6)return say('Password must be at least 6 characters.');
+ const {error}=await db.auth.signUp({email,password});
+ if(error)return say(error.message);
+ say('Account created. You can now log in.');
 }
-render();
+async function login(){
+ const email=document.getElementById('email').value.trim();
+ const password=document.getElementById('password').value;
+ const {error}=await db.auth.signInWithPassword({email,password});
+ if(error)return say(error.message);
+ await start();
+}
+async function logout(){
+ await db.auth.signOut();
+ user=null;group=null;
+ document.getElementById('app').classList.add('hidden');
+ document.getElementById('auth').classList.remove('hidden');
+ say('Logged out.');
+}
+async function start(){
+ const {data:{user:u}}=await db.auth.getUser();
+ if(!u)return;
+ user=u;
+ document.getElementById('auth').classList.add('hidden');
+ document.getElementById('app').classList.remove('hidden');
+ const {data:p,error}=await db.from('profiles').select('*').eq('id',user.id).maybeSingle();
+ if(error)return say(error.message);
+ profile=p;
+ if(profile)document.getElementById('username').value=profile.username;
+ await loadGroup();
+}
+async function saveProfile(){
+ const username=document.getElementById('username').value.trim();
+ if(!username)return say('Enter a warrior name.');
+ const {error}=await db.from('profiles').upsert({id:user.id,username});
+ if(error)return say(error.message);
+ profile={id:user.id,username};
+ say('Warrior name saved.');
+ await loadGroup();
+}
+async function createGroup(){
+ if(!profile)return say('Save your warrior name first.');
+ const name=document.getElementById('groupInput').value.trim();
+ if(!name)return say('Enter a group name.');
+ const {data:g,error}=await db.from('groups')
+ .insert({name,created_by:user.id}).select().single();
+ if(error)return say(error.message);
+ const {error:e}=await db.from('group_members')
+ .insert({group_id:g.id,user_id:user.id});
+ if(e)return say(e.message);
+ say('Group created!');
+ await loadGroup();
+}
+async function joinGroup(){
+ const code=document.getElementById('inviteInput').value.trim();
+ if(!code)return say('Enter an invite code.');
+ const {data,error}=await db.rpc('join_group_by_code',{p_code:code});
+ if(error)return say(error.message);
+ say('You joined the group!');
+ await loadGroup();
+}
+async function loadGroup(){
+ const {data:members,error}=await db.from('group_members')
+ .select('group_id').eq('user_id',user.id);
+ if(error)return say(error.message);
+ if(!members || !members.length){
+  group=null;document.getElementById('groupName').textContent='No group joined yet.';
+  document.getElementById('invite').textContent='';
+  return;
+ }
+ const {data:groups,error:e}=await db.from('groups')
+ .select('*').eq('id',members[0].group_id);
+ if(e)return say(e.message);
+ group=groups[0];
+ document.getElementById('groupName').textContent=group.name;
+ document.getElementById('invite').textContent='Invite code: '+group.invite_code;
+ await refresh();
+}
+async function refresh(){
+ if(!group)return;
+ const {data:rows,error}=await db.from('checkins')
+ .select('*').eq('group_id',group.id);
+ if(error)return say(error.message);
+ checkins=rows||[];
+ const mine=checkins.filter(x=>x.user_id===user.id);
+ const streak=currentStreak(mine);
+ const total=mine.filter(x=>x.success).length;
+ document.getElementById('streak').textContent=streak;
+ document.getElementById('total').textContent=total;
+ document.getElementById('level').textContent='Level '+level(streak);
+ const done=mine.some(x=>x.checkin_date===today());
+ document.getElementById('checkStatus').textContent=done?'You have checked in today.':'Have you completed today without breaking your challenge?';
+ document.getElementById('yesBtn').disabled=done;
+ document.getElementById('noBtn').disabled=done;
+ const {data:members,error:e}=await db.from('group_members')
+ .select('user_id').eq('group_id',group.id);
+ if(e)return say(e.message);
+ const ids=(members||[]).map(m=>m.user_id);
+ const {data:people,error:pe}=await db.from('profiles')
+ .select('id,username').in('id',ids);
+ if(pe)return say(pe.message);
+ const rankings=(people||[]).map(p=>{
+  const mineRows=checkins.filter(x=>x.user_id===p.id);
+  return {name:p.username,streak:currentStreak(mineRows),
+   total:mineRows.filter(x=>x.success).length};
+ });
+ rankings.sort((a,b)=>b.streak-a.streak);
+ document.getElementById('streakBoard').innerHTML=rankings.map((p,i)=>
+  `<div class="person">${i+1}. ${escapeHTML(p.name)} — <b>${p.streak} days</b></div>`
+ ).join('')||'No players yet.';
+ rankings.sort((a,b)=>b.total-a.total);
+ document.getElementById('totalBoard').innerHTML=rankings.map((p,i)=>
+  `<div class="person">${i+1}. ${escapeHTML(p.name)} — <b>${p.total} days</b></div>`
+ ).join('')||'No players yet.';
+}
+function escapeHTML(s){
+ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+async function checkin(success){
+ if(!group)return say('Create or join a group first.');
+ const {error}=await db.from('checkins').insert({
+  group_id:group.id,user_id:user.id,checkin_date:today(),success
+ });
+ if(error)return say(error.code==='23505'?'You have already checked in today.':error.message);
+ say(success?'YES recorded. Keep going!':'NO recorded. Your current streak has reset.');
+ await refresh();
+}
+db.auth.onAuthStateChange((event,session)=>{
+ if(session && !user)start();
+});
+(async()=>{
+ const {data:{session}}=await db.auth.getSession();
+ if(session)await start();
+})();
 </script>
 </body>
 </html>
+
