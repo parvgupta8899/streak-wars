@@ -1,0 +1,91 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STREAK WARS</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090d18;color:#f5f7ff;font-family:Arial,sans-serif;padding:22px}
+main{max-width:520px;margin:auto}
+h1{text-align:center;letter-spacing:3px;color:#a78bfa}
+.sub{text-align:center;color:#9ba5bc}
+.card{background:#151d30;border:1px solid #293550;border-radius:16px;padding:18px;margin:16px 0}
+.stat{display:flex;justify-content:space-between;margin:12px 0}
+.number{font-size:32px;font-weight:bold;color:#a78bfa}
+button{border:0;border-radius:10px;padding:13px;font-weight:bold;cursor:pointer}
+.yes{background:#34d399;color:#071b16;flex:1}
+.no{background:#fb7185;color:#260910;flex:1}
+input{width:100%;padding:13px;border-radius:9px;border:1px solid #46516b;background:#0d1424;color:white;margin:8px 0}
+.small{color:#9ba5bc;font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<h1>⚔ STREAK WARS</h1>
+<p class="sub">DISCIPLINE IS YOUR WEAPON</p>
+
+<div class="card">
+<h2>Your warrior profile</h2>
+<input id="name" placeholder="Enter your warrior name">
+<button onclick="saveName()">Save name</button>
+<div class="stat"><span>Current streak</span><b class="number" id="streak">0</b></div>
+<div class="stat"><span>Lifetime successful days</span><b id="total">0</b></div>
+<div class="stat"><span>Level</span><b id="level">Level 1</b></div>
+</div>
+
+<div class="card">
+<h2>Daily check-in</h2>
+<p id="status">Have you completed today without breaking your challenge?</p>
+<div style="display:flex;gap:12px">
+<button class="yes" onclick="check(true)">YES</button>
+<button class="no" onclick="check(false)">NO</button>
+</div>
+<p class="small" id="message">One check-in per day. Your answer cannot be changed.</p>
+</div>
+
+<div class="card">
+<h2>Level system</h2>
+<p>Level is based on your current streak.</p>
+<p>Level 1: 0–6 days</p>
+<p>Level 2: 7–13 days</p>
+<p>Level 3: 14–29 days</p>
+<p>Level 4: 30–59 days</p>
+<p>Level 5: 60–99 days</p>
+<p>Level 6: 100–199 days</p>
+<p>Level 7: 200–364 days</p>
+<p>Level 8: 365+ days</p>
+</div>
+<p class="sub small">STREAK WARS • BUILD DISCIPLINE DAILY</p>
+</main>
+
+<script>
+const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
+let data=JSON.parse(localStorage.getItem('streakwars')||'{"streak":0,"total":0,"lastDate":"","name":""}');
+function save(){localStorage.setItem('streakwars',JSON.stringify(data));render()}
+function saveName(){data.name=document.getElementById('name').value.trim();save()}
+function level(s){return s>=365?8:s>=200?7:s>=100?6:s>=60?5:s>=30?4:s>=14?3:s>=7?2:1}
+function render(){
+document.getElementById('name').value=data.name||'';
+document.getElementById('streak').textContent=data.streak;
+document.getElementById('total').textContent=data.total;
+document.getElementById('level').textContent='Level '+level(data.streak);
+document.getElementById('status').textContent=data.lastDate===today()?'You have checked in today.':'Have you completed today without breaking your challenge?';
+document.querySelectorAll('.yes,.no').forEach(b=>b.disabled=data.lastDate===today());
+if(data.lastDate===today())document.getElementById('message').textContent='Check-in completed. Come back tomorrow.';
+}
+function check(success){
+if(data.lastDate===today())return;
+if(data.lastDate){
+let yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);
+let y=yesterday.toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
+if(data.lastDate!==y)data.streak=0;
+}
+if(success){data.streak++;data.total++}else{data.streak=0}
+data.lastDate=today();save();
+}
+render();
+</script>
+</body>
+</html>
